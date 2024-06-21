@@ -212,6 +212,7 @@ const adapter = new class WeChatAdapter {
       recallMsg: message_id => this.recallMsg(i, i.user_id, message_id),
       getInfo: () => i,
       getAvatarUrl: () => i.avatar,
+      downloadAvatar: () => this.downloadAvatar(id, i)
     }
   }
 
@@ -232,6 +233,29 @@ const adapter = new class WeChatAdapter {
       ...i,
       getInfo: () => this.pickGroup(id, group_id).getMemberMap().get(user_id),
     }
+  }
+
+  downloadAvatar(id, i) {
+    const filename = `/tmp/${i.UserName}.jpg`
+    if(fs.existsSync(filename)){
+      fs.stat(filename, (err, data) => {
+        if(!err){
+          // 判断文件是不是超过10分钟
+          if(Date.now() - data.mtimeMs < 6000000){
+            return filename
+          }
+        }
+      });
+    }
+    if(i.HeadImgUrl){
+      return Bot[id].getHeadImg(i.HeadImgUrl).then(res => {
+        fs.writeFileSync(filename, res.data)
+        return filename
+      }).catch(err => {
+        console.log(err)
+      })
+    }
+    return ''
   }
 
   pickGroup(id, group_id) {
@@ -460,6 +484,7 @@ const adapter = new class WeChatAdapter {
 
     Bot[id].pickFriend = user_id => this.pickFriend(id, user_id)
     Bot[id].pickUser = Bot[id].pickFriend
+    Bot[id].downloadAvatar = group_id => this.downloadAvatar(id, url)
 
     Bot[id].getFriendArray = () => this.getFriendArray(id)
     Bot[id].getFriendList = () => this.getFriendList(id)
